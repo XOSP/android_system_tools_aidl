@@ -46,6 +46,7 @@ unique_ptr<JavaOptions> java_usage() {
           "   -p<FILE>   file created by --preprocess to import.\n"
           "   -o<FOLDER> base output folder for generated files.\n"
           "   -b         fail when trying to compile a parcelable.\n"
+          "   -n         generate no-op classes.\n"
           "\n"
           "INPUT:\n"
           "   An aidl interface file.\n"
@@ -122,6 +123,8 @@ unique_ptr<JavaOptions> JavaOptions::Parse(int argc, const char* const* argv) {
       }
     } else if (strcmp(s, "-b") == 0) {
       options->fail_on_parcelable_ = true;
+    } else if (s[1] == 'n') {
+      options->generate_no_op_methods_ = true;
     } else {
       // s[1] is not known
       fprintf(stderr, "unknown option (%d): %s\n", i, s);
