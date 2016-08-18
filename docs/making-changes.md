@@ -16,11 +16,6 @@ This codebase has both integration and unittests, all of which are expected to
 consistently pass against a device/emulator:
 
 ```
-$ mmma system/tools/aidl && \
-    out/host/linux-x86/nativetest64/aidl_unittests/aidl_unittests && \
-    adb remount && adb sync && \
-    adb install -r `find out/ -name aidl_test_services.apk` && \
-    (pushd system/tools/aidl/ && tests/integration-test.py) && \
-    echo "All tests pass"
+$ ./runtests.sh && echo "All tests pass"
 
 ```
