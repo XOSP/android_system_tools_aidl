@@ -279,20 +279,31 @@ unique_ptr<Declaration> DefineClientTransaction(const TypeNamespace& types,
                      "getInterfaceDescriptor()")));
   b->AddStatement(GotoErrorOnBadStatus());
 
-  // Serialization looks roughly like:
-  //     _aidl_ret_status = _aidl_data.WriteInt32(in_param_name);
-  //     if (_aidl_ret_status != ::android::OK) { goto error; }
-  for (const AidlArgument* a : method.GetInArguments()) {
+  for (const auto& a: method.GetArguments()) {
     const Type* type = a->GetType().GetLanguageType<Type>();
-    const string& method = type->WriteToParcelMethod();
-
     string var_name = ((a->IsOut()) ? "*" : "") + a->GetName();
     var_name = type->WriteCast(var_name);
-    b->AddStatement(new Assignment(
-        kAndroidStatusVarName,
-        new MethodCall(StringPrintf("%s.%s", kDataVarName, method.c_str()),
-                       ArgList(var_name))));
-    b->AddStatement(GotoErrorOnBadStatus());
+
+    if (a->IsIn()) {
+      // Serialization looks roughly like:
+      //     _aidl_ret_status = _aidl_data.WriteInt32(in_param_name);
+      //     if (_aidl_ret_status != ::android::OK) { goto error; }
+      const string& method = type->WriteToParcelMethod();
+      b->AddStatement(new Assignment(
+          kAndroidStatusVarName,
+          new MethodCall(StringPrintf("%s.%s", kDataVarName, method.c_str()),
+                         ArgList(var_name))));
+      b->AddStatement(GotoErrorOnBadStatus());
+    } else if (a->IsOut() && a->GetType().IsArray()) {
+      // Special case, the length of the out array is written into the parcel.
+      //     _aidl_ret_status = _aidl_data.writeVectorSize(&out_param_name);
+      //     if (_aidl_ret_status != ::android::OK) { goto error; }
+      b->AddStatement(new Assignment(
+          kAndroidStatusVarName,
+          new MethodCall(StringPrintf("%s.writeVectorSize", kDataVarName),
+                         ArgList(var_name))));
+      b->AddStatement(GotoErrorOnBadStatus());
+    }
   }
 
   // Invoke the transaction on the remote binder and confirm status.
@@ -433,18 +444,29 @@ bool HandleServerTransaction(const TypeNamespace& types,
   interface_check->OnTrue()->AddLiteral("break");
 
   // Deserialize each "in" parameter to the transaction.
-  for (const AidlArgument* a : method.GetInArguments()) {
+  for (const auto& a: method.GetArguments()) {
     // Deserialization looks roughly like:
     //     _aidl_ret_status = _aidl_data.ReadInt32(&in_param_name);
     //     if (_aidl_ret_status != ::android::OK) { break; }
     const Type* type = a->GetType().GetLanguageType<Type>();
     const string& readMethod = type->ReadFromParcelMethod();
 
-    b->AddStatement(new Assignment{
-        kAndroidStatusVarName,
-        new MethodCall{string(kDataVarName) + "." + readMethod,
-                       "&" + BuildVarName(*a)}});
-    b->AddStatement(BreakOnStatusNotOk());
+    if (a->IsIn()) {
+      b->AddStatement(new Assignment{
+          kAndroidStatusVarName,
+          new MethodCall{string(kDataVarName) + "." + readMethod,
+                         "&" + BuildVarName(*a)}});
+      b->AddStatement(BreakOnStatusNotOk());
+    } else if (a->IsOut() && a->GetType().IsArray()) {
+      // Special case, the length of the out array is written into the parcel.
+      //     _aidl_ret_status = _aidl_data.resizeOutVector(&out_param_name);
+      //     if (_aidl_ret_status != ::android::OK) { break; }
+      b->AddStatement(new Assignment{
+          kAndroidStatusVarName,
+          new MethodCall{string(kDataVarName) + ".resizeOutVector",
+                         "&" + BuildVarName(*a)}});
+      b->AddStatement(BreakOnStatusNotOk());
+    }
   }
 
   // Call the actual method.  This is implemented by the subclass.
