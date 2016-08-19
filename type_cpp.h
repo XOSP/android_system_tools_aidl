@@ -87,27 +87,6 @@ class Type : public ValidatableType {
   DISALLOW_COPY_AND_ASSIGN(Type);
 };  // class Type
 
-class ArrayType : public Type {
- public:
-  ArrayType(int kind,  // from ValidatableType
-            const std::string& package,
-            const std::string& aidl_type,
-            const std::vector<std::string>& header,
-            const std::string& cpp_type,
-            const std::string& read_method,
-            const std::string& write_method,
-            Type* array_type = nullptr,
-            Type* nullable_type = nullptr,
-            const std::string& src_file_name = "",
-            int line = -1)
-      : Type(kind, package, aidl_type, header, cpp_type, read_method,
-             write_method, array_type, nullable_type, src_file_name, line) {}
-
-  bool CanBeOutParameter() const override { return true; }
-
-  virtual ~ArrayType() = default;
-};
-
 class TypeNamespace : public ::android::aidl::LanguageTypeNamespace<Type> {
  public:
   TypeNamespace() = default;
