@@ -650,6 +650,7 @@ R"(#ifndef AIDL_GENERATED_ANDROID_OS_I_COMPLEX_TYPE_INTERFACE_H_
 #include <binder/Status.h>
 #include <cstdint>
 #include <foo/IFooType.h>
+#include <memory>
 #include <utils/String16.h>
 #include <utils/StrongPointer.h>
 #include <vector>
