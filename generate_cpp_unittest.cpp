@@ -117,6 +117,10 @@ _aidl_ret_status = _aidl_data.writeDoubleVector(*goes_in_and_out);
 if (((_aidl_ret_status) != (::android::OK))) {
 goto _aidl_error;
 }
+_aidl_ret_status = _aidl_data.writeVectorSize(*goes_out);
+if (((_aidl_ret_status) != (::android::OK))) {
+goto _aidl_error;
+}
 _aidl_ret_status = remote()->transact(IComplexTypeInterface::SEND, _aidl_data, &_aidl_reply);
 if (((_aidl_ret_status) != (::android::OK))) {
 goto _aidl_error;
@@ -423,6 +427,10 @@ if (((_aidl_ret_status) != (::android::OK))) {
 break;
 }
 _aidl_ret_status = _aidl_data.readDoubleVector(&in_goes_in_and_out);
+if (((_aidl_ret_status) != (::android::OK))) {
+break;
+}
+_aidl_ret_status = _aidl_data.resizeOutVector(&out_goes_out);
 if (((_aidl_ret_status) != (::android::OK))) {
 break;
 }
