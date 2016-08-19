@@ -76,93 +76,96 @@ class VoidType : public Type {
   bool CanWriteToParcel() const override { return false; }
 };  // class VoidType
 
+class CppArrayType : public Type {
+ public:
+  CppArrayType(int kind,  // from ValidatableType
+            const std::string& package,
+            const string& underlying_aidl_type,
+            const string& cpp_header,
+            const string& underlying_cpp_type,
+            const string& read_method,
+            const string& write_method,
+            bool is_nullable,
+            const string& src_file_name = "")
+      : Type(kind, package,
+             underlying_aidl_type + "[]",
+             GetHeaders(is_nullable, cpp_header),
+             GetCppType(is_nullable, underlying_cpp_type),
+             read_method, write_method, kNoArrayType,
+             (is_nullable)
+                 ? kNoNullableType
+                 // All arrays are nullable.
+                 : new CppArrayType(kind, package, underlying_aidl_type,
+                                    cpp_header, underlying_cpp_type,
+                                    read_method, write_method, true),
+             src_file_name) {}
+
+  bool CanBeOutParameter() const override { return true; }
+
+ private:
+  static vector<string> GetHeaders(bool is_nullable, const string& cpp_header) {
+    vector<string> result = {"vector"};
+    if (is_nullable) {
+      result.push_back("memory");
+    }
+    if (!cpp_header.empty()) {
+      result.push_back(cpp_header);
+    }
+    return result;
+  }
+
+  static string GetCppType(bool is_nullable,
+                           const string& underlying_cpp_type) {
+    if (is_nullable)
+      return StringPrintf("::std::unique_ptr<::std::vector<%s>>",
+                          underlying_cpp_type.c_str());
+    return StringPrintf("::std::vector<%s>",
+                        underlying_cpp_type.c_str());
+  }
+
+  DISALLOW_COPY_AND_ASSIGN(CppArrayType);
+};  // class CppArrayType
+
 class PrimitiveType : public Type {
  public:
-  PrimitiveType(int kind,  // from ValidatableType
-                const std::string& package,
-                const std::string& aidl_type,
+  PrimitiveType(const std::string& aidl_type,
                 const std::string& header,
                 const std::string& cpp_type,
                 const std::string& read_method,
                 const std::string& write_method,
                 const std::string& read_array_method,
                 const std::string& write_array_method)
-      : Type(kind, package, aidl_type, {header}, cpp_type, read_method,
-             write_method, PrimitiveArrayType(kind, package, aidl_type,
-                                              header, cpp_type,
-                                              read_array_method,
-                                              write_array_method)) {}
+      : Type(ValidatableType::KIND_BUILT_IN, kNoPackage, aidl_type, {header},
+             cpp_type, read_method, write_method,
+             new CppArrayType(ValidatableType::KIND_BUILT_IN, kNoPackage,
+                              aidl_type, header, cpp_type,
+                              read_array_method, write_array_method,
+                              false)) {}
 
   virtual ~PrimitiveType() = default;
   bool IsCppPrimitive() const override { return true; }
-  bool CanBeOutParameter() const override { return is_array_; }
-
- protected:
-  static PrimitiveType* PrimitiveArrayType(int kind,  // from ValidatableType
-                                           const std::string& package,
-                                           const std::string& aidl_type,
-                                           const std::string& header,
-                                           const std::string& cpp_type,
-                                           const std::string& read_method,
-                                           const std::string& write_method) {
-    PrimitiveType* nullable =
-        new PrimitiveType(kind, package, aidl_type + "[]", header,
-                          "::std::unique_ptr<::std::vector<" + cpp_type + ">>",
-                          read_method, write_method);
-
-    return new PrimitiveType(kind, package, aidl_type + "[]", header,
-                             "::std::vector<" + cpp_type + ">",
-                             read_method, write_method, nullable);
-  }
-
-  PrimitiveType(int kind,  // from ValidatableType
-                const std::string& package,
-                const std::string& aidl_type,
-                const std::string& header,
-                const std::string& cpp_type,
-                const std::string& read_method,
-                const std::string& write_method,
-                Type* nullable_type = nullptr)
-      : Type(kind, package, aidl_type, {header, "vector"}, cpp_type, read_method,
-             write_method, kNoArrayType, nullable_type) {
-    is_array_ = true;
-  }
 
  private:
-  bool is_array_ = false;
-
   DISALLOW_COPY_AND_ASSIGN(PrimitiveType);
 };  // class PrimitiveType
 
+// Unfortunately, bytes in Java are signed.  However, most C authors would
+// say that a byte is not in fact signed.  Compromise: customize this otherwise
+// normal primitive to use signed single bytes, but unsigned byte arrays.
 class ByteType : public Type {
  public:
-  ByteType() : ByteType(false, "byte", "int8_t", "readByte", "writeByte",
-     new ByteType(true, "byte[]", "::std::vector<uint8_t>", "readByteVector",
-         "writeByteVector", kNoArrayType,
-         new ByteType(true, "byte[]",
-             "::std::unique_ptr<::std::vector<uint8_t>>",
-             "readByteVector", "writeByteVector", kNoArrayType,
-             kNoNullableType)), kNoNullableType) {}
+  ByteType()
+      : Type(ValidatableType::KIND_BUILT_IN, kNoPackage, "byte",
+             {"cstdint"}, "int8_t", "readByte", "writeByte",
+             new CppArrayType(ValidatableType::KIND_BUILT_IN, kNoPackage,
+                              "byte", "cstdint", "uint8_t",
+                              "readByteVector", "writeByteVector",
+                              false)) {}
 
   virtual ~ByteType() = default;
   bool IsCppPrimitive() const override { return true; }
-  bool CanBeOutParameter() const override { return is_array_; }
-
- protected:
-  ByteType(bool is_array,
-           const std::string& name,
-           const std::string& cpp_type,
-           const std::string& read_method,
-           const std::string& write_method,
-           Type* array_type,
-           Type* nullable_type)
-      : Type(ValidatableType::KIND_BUILT_IN, kNoPackage, name, {"cstdint"},
-             cpp_type, read_method, write_method, array_type, nullable_type),
-        is_array_(is_array) {}
 
  private:
-  bool is_array_ = false;
-
   DISALLOW_COPY_AND_ASSIGN(ByteType);
 };  // class PrimitiveType
 
@@ -216,46 +219,6 @@ class BinderType : public Type {
   std::string write_cast_;
 };
 
-class NullableParcelableArrayType : public ArrayType {
- public:
-  NullableParcelableArrayType(const AidlParcelable& parcelable,
-                              const std::string& src_file_name)
-      : ArrayType(ValidatableType::KIND_PARCELABLE,
-                  parcelable.GetPackage(), parcelable.GetName(),
-                  {parcelable.GetCppHeader(), "vector"},
-                  GetCppName(parcelable), "readParcelableVector",
-                  "writeParcelableVector", kNoArrayType, kNoNullableType,
-                  src_file_name, parcelable.GetLine()) {}
-  virtual ~NullableParcelableArrayType() = default;
-
- private:
-  static string GetCppName(const AidlParcelable& parcelable) {
-    return "::std::unique_ptr<::std::vector<std::unique_ptr<" +
-        Join(parcelable.GetSplitPackage(), "::") + "::" +
-        parcelable.GetName() + ">>>";
-  }
-};
-
-class ParcelableArrayType : public ArrayType {
- public:
-  ParcelableArrayType(const AidlParcelable& parcelable,
-                      const std::string& src_file_name)
-      : ArrayType(ValidatableType::KIND_PARCELABLE,
-                  parcelable.GetPackage(), parcelable.GetName(),
-                  {parcelable.GetCppHeader(), "vector"},
-                  GetCppName(parcelable), "readParcelableVector",
-                  "writeParcelableVector", kNoArrayType,
-                  new NullableParcelableArrayType(parcelable, src_file_name),
-                  src_file_name, parcelable.GetLine()) {}
-  virtual ~ParcelableArrayType() = default;
-
- private:
-  static string GetCppName(const AidlParcelable& parcelable) {
-    return "::std::vector<" + Join(parcelable.GetSplitPackage(), "::") +
-        "::" + parcelable.GetName() + ">";
-  }
-};
-
 class NullableParcelableType : public Type {
  public:
   NullableParcelableType(const AidlParcelable& parcelable,
@@ -284,7 +247,12 @@ class ParcelableType : public Type {
              parcelable.GetPackage(), parcelable.GetName(),
              {parcelable.GetCppHeader()}, GetCppName(parcelable),
              "readParcelable", "writeParcelable",
-             new ParcelableArrayType(parcelable, src_file_name),
+             new CppArrayType(
+                 ValidatableType::KIND_PARCELABLE, parcelable.GetPackage(),
+                 parcelable.GetName(), parcelable.GetCppHeader(),
+                 GetCppName(parcelable),
+                 "readParcelableVector", "writeParcelableVector", false,
+                 src_file_name),
              new NullableParcelableType(parcelable, src_file_name),
              src_file_name, parcelable.GetLine()) {}
   virtual ~ParcelableType() = default;
@@ -415,44 +383,35 @@ bool Type::CanWriteToParcel() const { return true; }
 void TypeNamespace::Init() {
   Add(new ByteType());
   Add(new PrimitiveType(
-      ValidatableType::KIND_BUILT_IN, kNoPackage, "int",
+      "int",
       "cstdint", "int32_t", "readInt32", "writeInt32",
       "readInt32Vector", "writeInt32Vector"));
   Add(new PrimitiveType(
-      ValidatableType::KIND_BUILT_IN, kNoPackage, "long",
+      "long",
       "cstdint", "int64_t", "readInt64", "writeInt64",
       "readInt64Vector", "writeInt64Vector"));
   Add(new PrimitiveType(
-      ValidatableType::KIND_BUILT_IN, kNoPackage, "float",
+      "float",
       kNoHeader, "float", "readFloat", "writeFloat",
       "readFloatVector", "writeFloatVector"));
   Add(new PrimitiveType(
-      ValidatableType::KIND_BUILT_IN, kNoPackage, "double",
+      "double",
       kNoHeader, "double", "readDouble", "writeDouble",
       "readDoubleVector", "writeDoubleVector"));
   Add(new PrimitiveType(
-      ValidatableType::KIND_BUILT_IN, kNoPackage, "boolean",
+      "boolean",
       kNoHeader, "bool", "readBool", "writeBool",
       "readBoolVector", "writeBoolVector"));
   // C++11 defines the char16_t type as a built in for Unicode characters.
   Add(new PrimitiveType(
-      ValidatableType::KIND_BUILT_IN, kNoPackage, "char",
+      "char",
       kNoHeader, "char16_t", "readChar", "writeChar",
       "readCharVector", "writeCharVector"));
 
-  Type* nullable_string_array_type =
-      new ArrayType(ValidatableType::KIND_BUILT_IN, "java.lang", "String[]",
-                    {"utils/String16.h", "memory", "vector"},
-                    "::std::unique_ptr<::std::vector<::std::unique_ptr<::android::String16>>>",
-                    "readString16Vector", "writeString16Vector");
-
-  Type* string_array_type = new ArrayType(ValidatableType::KIND_BUILT_IN,
-                                          "java.lang", "String[]",
-                                          {"utils/String16.h", "vector"},
-                                          "::std::vector<::android::String16>",
-                                          "readString16Vector",
-                                          "writeString16Vector", kNoArrayType,
-                                          nullable_string_array_type);
+  Type* string_array_type = new CppArrayType(
+      ValidatableType::KIND_BUILT_IN, "java.lang", "String",
+      "utils/String16.h", "::android::String16",
+      "readString16Vector", "writeString16Vector", false);
 
   Type* nullable_string_type =
       new Type(ValidatableType::KIND_BUILT_IN, "java.lang", "String",
@@ -470,19 +429,12 @@ void TypeNamespace::Init() {
 
   // This type is a Utf16 string in the parcel, but deserializes to
   // a std::string in Utf8 format when we use it in C++.
-  Type* nullable_cpp_utf8_string_array = new ArrayType(
+  Type* cpp_utf8_string_array = new CppArrayType(
       ValidatableType::KIND_BUILT_IN,
-      kAidlReservedTypePackage, StringPrintf("%s[]", kUtf8InCppStringClass),
-      {"memory", "string", "vector"},
-      "::std::unique_ptr<::std::vector<::std::unique_ptr<::std::string>>>",
-      "readUtf8VectorFromUtf16Vector", "writeUtf8VectorAsUtf16Vector");
-  Type* cpp_utf8_string_array = new ArrayType(
-      ValidatableType::KIND_BUILT_IN,
-      kAidlReservedTypePackage, StringPrintf("%s[]", kUtf8InCppStringClass),
-      {"string", "vector"},
-      "::std::vector<::std::string>",
+      kAidlReservedTypePackage, kUtf8InCppStringClass,
+      "string", "::std::string",
       "readUtf8VectorFromUtf16Vector", "writeUtf8VectorAsUtf16Vector",
-      kNoArrayType, nullable_cpp_utf8_string_array);
+      false);
   Type* nullable_cpp_utf8_string_type = new Type(
       ValidatableType::KIND_BUILT_IN,
       kAidlReservedTypePackage, kUtf8InCppStringClass,
@@ -509,11 +461,12 @@ void TypeNamespace::Init() {
   Add(new StringListType());
   Add(new Utf8InCppStringListType());
 
-  Type* fd_vector_type = new ArrayType(
-      ValidatableType::KIND_BUILT_IN, kNoPackage, "FileDescriptor[]",
-      {"android-base/unique_fd.h", "vector"},
-      "::std::vector<::android::base::unique_fd>",
-      "readUniqueFileDescriptorVector", "writeUniqueFileDescriptorVector");
+  Type* fd_vector_type = new CppArrayType(
+      ValidatableType::KIND_BUILT_IN, kNoPackage, "FileDescriptor",
+      "android-base/unique_fd.h",
+      "::android::base::unique_fd",
+      "readUniqueFileDescriptorVector", "writeUniqueFileDescriptorVector",
+      false);
 
   Add(new Type(
       ValidatableType::KIND_BUILT_IN, kNoPackage, "FileDescriptor",
