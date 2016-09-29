@@ -278,6 +278,7 @@ class AidlQualifiedName : public AidlNode {
   const std::vector<std::string>& GetTerms() const { return terms_; }
   const std::string& GetComments() const { return comments_; }
   std::string GetDotName() const { return android::base::Join(terms_, '.'); }
+  std::string GetColonName() const { return android::base::Join(terms_, "::"); }
 
   void AddTerm(const std::string& term);
 
@@ -296,6 +297,8 @@ class AidlParcelable : public AidlNode {
   virtual ~AidlParcelable() = default;
 
   std::string GetName() const { return name_->GetDotName(); }
+  // C++ uses "::" instead of "." to refer to a inner class.
+  std::string GetCppName() const { return name_->GetColonName(); }
   unsigned GetLine() const { return line_; }
   std::string GetPackage() const;
   const std::vector<std::string>& GetSplitPackage() const { return package_; }
