@@ -235,7 +235,7 @@ class NullableParcelableType : public Type {
  private:
   static string GetCppName(const AidlParcelable& parcelable) {
     return "::std::unique_ptr<::" + Join(parcelable.GetSplitPackage(), "::") +
-        "::" + parcelable.GetName() + ">";
+        "::" + parcelable.GetCppName() + ">";
   }
 };
 
@@ -261,7 +261,7 @@ class ParcelableType : public Type {
  private:
   static string GetCppName(const AidlParcelable& parcelable) {
     return "::" + Join(parcelable.GetSplitPackage(), "::") +
-        "::" + parcelable.GetName();
+        "::" + parcelable.GetCppName();
   }
 };
 

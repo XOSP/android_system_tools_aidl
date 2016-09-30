@@ -332,6 +332,23 @@ TEST_F(AidlTest, ParseNegativeConstHexValue) {
   EXPECT_EQ(-1, cpp_int_constants[0]->GetValue());
 }
 
+TEST_F(AidlTest, UnderstandsNestedParcelables) {
+  io_delegate_.SetFileContents(
+      "p/Outer.aidl",
+      "package p; parcelable Outer.Inner cpp_header \"baz/header\";");
+  import_paths_.push_back("");
+  const string input_path = "p/IFoo.aidl";
+  const string input = "package p; import p.Outer; interface IFoo"
+                       " { Outer.Inner get(); }";
+
+  auto cpp_parse_result = Parse(input_path, input, &cpp_types_);
+  EXPECT_NE(nullptr, cpp_parse_result);
+  auto cpp_type = cpp_types_.FindTypeByCanonicalName("p.Outer.Inner");
+  ASSERT_NE(nullptr, cpp_type);
+  // C++ uses "::" instead of "." to refer to a inner class.
+  EXPECT_EQ("::p::Outer::Inner", cpp_type->CppType());
+}
+
 TEST_F(AidlTest, UnderstandsNativeParcelables) {
   io_delegate_.SetFileContents(
       "p/Bar.aidl",
