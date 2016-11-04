@@ -17,107 +17,6 @@
 LOCAL_PATH := $(call my-dir)
 
 aidl_cflags := -Wall -Wextra -Werror
-aidl_static_libraries := libbase libcutils
-
-aidl_module_host_os := darwin linux windows
-ifdef BRILLO
-  aidl_module_host_os := darwin linux
-endif
-
-# Logic shared between aidl and its unittests
-include $(CLEAR_VARS)
-LOCAL_MODULE := libaidl-common
-LOCAL_MODULE_HOST_OS := $(aidl_module_host_os)
-
-LOCAL_WHOLE_STATIC_LIBRARIES := libgtest_prod
-LOCAL_CLANG_CFLAGS := $(aidl_cflags)
-# Tragically, the code is riddled with unused parameters.
-LOCAL_CLANG_CFLAGS += -Wno-unused-parameter
-# yacc dumps a lot of code *just in case*.
-LOCAL_CLANG_CFLAGS += -Wno-unused-function
-LOCAL_CLANG_CFLAGS += -Wno-unneeded-internal-declaration
-# yacc is a tool from a more civilized age.
-LOCAL_CLANG_CFLAGS += -Wno-deprecated-register
-# yacc also has a habit of using char* over const char*.
-LOCAL_CLANG_CFLAGS += -Wno-writable-strings
-LOCAL_STATIC_LIBRARIES := $(aidl_static_libraries)
-
-LOCAL_SRC_FILES := \
-    aidl.cpp \
-    aidl_language.cpp \
-    aidl_language_l.ll \
-    aidl_language_y.yy \
-    ast_cpp.cpp \
-    ast_java.cpp \
-    code_writer.cpp \
-    generate_cpp.cpp \
-    generate_java.cpp \
-    generate_java_binder.cpp \
-    import_resolver.cpp \
-    line_reader.cpp \
-    io_delegate.cpp \
-    options.cpp \
-    type_cpp.cpp \
-    type_java.cpp \
-    type_namespace.cpp \
-
-include $(BUILD_HOST_STATIC_LIBRARY)
-
-
-# aidl executable
-include $(CLEAR_VARS)
-LOCAL_MODULE := aidl
-
-LOCAL_MODULE_HOST_OS := $(aidl_module_host_os)
-LOCAL_CFLAGS := $(aidl_cflags)
-LOCAL_WHOLE_STATIC_LIBRARIES := libgtest_prod
-LOCAL_SRC_FILES := main_java.cpp
-LOCAL_STATIC_LIBRARIES := libaidl-common $(aidl_static_libraries)
-include $(BUILD_HOST_EXECUTABLE)
-
-# aidl-cpp executable
-include $(CLEAR_VARS)
-LOCAL_MODULE := aidl-cpp
-
-LOCAL_MODULE_HOST_OS := $(aidl_module_host_os)
-LOCAL_CFLAGS := $(aidl_cflags)
-LOCAL_WHOLE_STATIC_LIBRARIES := libgtest_prod
-LOCAL_SRC_FILES := main_cpp.cpp
-LOCAL_STATIC_LIBRARIES := libaidl-common $(aidl_static_libraries)
-include $(BUILD_HOST_EXECUTABLE)
-
-# Unit tests
-include $(CLEAR_VARS)
-LOCAL_MODULE := aidl_unittests
-LOCAL_MODULE_HOST_OS := darwin linux
-
-LOCAL_CFLAGS := $(aidl_cflags) -g -DUNIT_TEST
-# Tragically, the code is riddled with unused parameters.
-LOCAL_CLANG_CFLAGS := -Wno-unused-parameter
-LOCAL_SRC_FILES := \
-    aidl_unittest.cpp \
-    ast_cpp_unittest.cpp \
-    ast_java_unittest.cpp \
-    generate_cpp_unittest.cpp \
-    io_delegate_unittest.cpp \
-    options_unittest.cpp \
-    tests/end_to_end_tests.cpp \
-    tests/fake_io_delegate.cpp \
-    tests/main.cpp \
-    tests/test_data_example_interface.cpp \
-    tests/test_data_ping_responder.cpp \
-    tests/test_data_string_constants.cpp \
-    tests/test_util.cpp \
-    type_cpp_unittest.cpp \
-    type_java_unittest.cpp \
-
-LOCAL_STATIC_LIBRARIES := \
-    libaidl-common \
-    $(aidl_static_libraries) \
-    libgmock_host \
-
-LOCAL_LDLIBS_linux := -lrt
-include $(BUILD_HOST_NATIVE_TEST)
 
 #
 # Everything below here is used for integration testing of generated AIDL code.
@@ -167,12 +66,6 @@ LOCAL_SRC_FILES := \
     tests/aidl_test_client_primitives.cpp \
     tests/aidl_test_client_utf8_strings.cpp \
     tests/aidl_test_client_service_exceptions.cpp
-include $(BUILD_EXECUTABLE)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := aidl_test_sentinel_searcher
-LOCAL_SRC_FILES := tests/aidl_test_sentinel_searcher.cpp
-LOCAL_CFLAGS := $(aidl_integration_test_cflags)
 include $(BUILD_EXECUTABLE)
 
 
