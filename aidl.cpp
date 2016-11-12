@@ -247,16 +247,20 @@ int check_types(const string& filename,
 
 void write_common_dep_file(const string& output_file,
                            const vector<string>& aidl_sources,
-                           CodeWriter* writer) {
+                           CodeWriter* writer,
+                           const bool ninja) {
   // Encode that the output file depends on aidl input files.
   writer->Write("%s : \\\n", output_file.c_str());
   writer->Write("  %s", Join(aidl_sources, " \\\n  ").c_str());
-  writer->Write("\n\n");
+  writer->Write("\n");
 
-  // Output "<input_aidl_file>: " so make won't fail if the input .aidl file
-  // has been deleted, moved or renamed in incremental build.
-  for (const auto& src : aidl_sources) {
-    writer->Write("%s :\n", src.c_str());
+  if (!ninja) {
+    writer->Write("\n");
+    // Output "<input_aidl_file>: " so make won't fail if the input .aidl file
+    // has been deleted, moved or renamed in incremental build.
+    for (const auto& src : aidl_sources) {
+      writer->Write("%s :\n", src.c_str());
+    }
   }
 }
 
@@ -281,7 +285,8 @@ bool write_java_dep_file(const JavaOptions& options,
     }
   }
 
-  write_common_dep_file(output_file_name, source_aidl, writer.get());
+  write_common_dep_file(output_file_name, source_aidl, writer.get(),
+                        options.DependencyFileNinja());
 
   return true;
 }
@@ -310,20 +315,24 @@ bool write_cpp_dep_file(const CppOptions& options,
     }
   }
 
-  vector<string> headers;
-  for (ClassNames c : {ClassNames::CLIENT,
-                       ClassNames::SERVER,
-                       ClassNames::INTERFACE}) {
-    headers.push_back(options.OutputHeaderDir() + '/' +
-                      HeaderFile(interface, c, false /* use_os_sep */));
+  write_common_dep_file(options.OutputCppFilePath(), source_aidl, writer.get(),
+                        options.DependencyFileNinja());
+
+  if (!options.DependencyFileNinja()) {
+    vector<string> headers;
+    for (ClassNames c : {ClassNames::CLIENT,
+                         ClassNames::SERVER,
+                         ClassNames::INTERFACE}) {
+      headers.push_back(options.OutputHeaderDir() + '/' +
+                        HeaderFile(interface, c, false /* use_os_sep */));
+    }
+
+    writer->Write("\n");
+
+    // Generated headers also depend on the source aidl files.
+    writer->Write("%s : \\\n    %s\n", Join(headers, " \\\n    ").c_str(),
+                  Join(source_aidl, " \\\n    ").c_str());
   }
-
-  write_common_dep_file(options.OutputCppFilePath(), source_aidl, writer.get());
-  writer->Write("\n");
-
-  // Generated headers also depend on the source aidl files.
-  writer->Write("%s : \\\n    %s\n", Join(headers, " \\\n    ").c_str(),
-                Join(source_aidl, " \\\n    ").c_str());
 
   return true;
 }
