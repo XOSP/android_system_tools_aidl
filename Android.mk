@@ -16,58 +16,9 @@
 
 LOCAL_PATH := $(call my-dir)
 
-aidl_cflags := -Wall -Wextra -Werror
-
 #
 # Everything below here is used for integration testing of generated AIDL code.
 #
-aidl_integration_test_cflags := $(aidl_cflags) -Wunused-parameter
-aidl_integration_test_shared_libs := \
-    libbase \
-    libbinder \
-    liblog \
-    libutils
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := libaidl-integration-test
-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-LOCAL_CFLAGS := $(aidl_integration_test_cflags)
-LOCAL_SHARED_LIBRARIES := $(aidl_integration_test_shared_libs)
-LOCAL_AIDL_INCLUDES := \
-    system/tools/aidl/tests/ \
-    frameworks/native/aidl/binder
-LOCAL_SRC_FILES := \
-    tests/android/aidl/tests/ITestService.aidl \
-    tests/android/aidl/tests/INamedCallback.aidl \
-    tests/simple_parcelable.cpp
-include $(BUILD_SHARED_LIBRARY)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := aidl_test_service
-LOCAL_CFLAGS := $(aidl_integration_test_cflags)
-LOCAL_SHARED_LIBRARIES := \
-    libaidl-integration-test \
-    $(aidl_integration_test_shared_libs)
-LOCAL_SRC_FILES := \
-    tests/aidl_test_service.cpp
-include $(BUILD_EXECUTABLE)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := aidl_test_client
-LOCAL_CFLAGS := $(aidl_integration_test_cflags)
-LOCAL_SHARED_LIBRARIES := \
-    libaidl-integration-test \
-    $(aidl_integration_test_shared_libs)
-LOCAL_SRC_FILES := \
-    tests/aidl_test_client.cpp \
-    tests/aidl_test_client_file_descriptors.cpp \
-    tests/aidl_test_client_parcelables.cpp \
-    tests/aidl_test_client_nullables.cpp \
-    tests/aidl_test_client_primitives.cpp \
-    tests/aidl_test_client_utf8_strings.cpp \
-    tests/aidl_test_client_service_exceptions.cpp
-include $(BUILD_EXECUTABLE)
-
 
 # aidl on its own doesn't need the framework, but testing native/java
 # compatibility introduces java dependencies.
