@@ -91,18 +91,13 @@ interfaces.
 | String                | String16            | in    | Supports null references.                             |
 | @utf8InCpp String     | std::string         | in    | @utf8InCpp causes UTF16 to UTF8 conversion in C++.    |
 | android.os.Parcelable | android::Parcelable | inout |                                                       |
+| java.util.Map         | android::binder::Map| inout | `std::map<std::string,android::binder::Value>`        |
 | T extends IBinder     | sp<T>               | in    |                                                       |
 | Arrays (T[])          | vector<T>           | inout | May contain only primitives, Strings and parcelables. |
 | List<String>          | vector<String16>    | inout |                                                       |
 | PersistableBundle     | PersistableBundle   | inout | binder/PersistableBundle.h                            |
 | List<IBinder>         | vector<sp<IBinder>> | inout |                                                       |
 | FileDescriptor        | unique_fd           | inout | android-base/unique_fd.h from libbase                 |
-
-Note that java.util.Map and java.utils.List are not good candidates for cross
-language communication because they may contain arbitrary types on the Java
-side.  For instance, Map is cast to Map<String,Object> and then the object
-values dynamically inspected and serialized as type/value pairs.  Support
-exists for sending arbitrary Java serializables, Android Bundles, etc.
 
 Note that annotations may be placed at the interface level, as well as on a
 type by type basis.  Interface level annotations will be applied

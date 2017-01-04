@@ -265,6 +265,36 @@ class ParcelableType : public Type {
   }
 };
 
+class NullableMap : public Type {
+ public:
+  NullableMap()
+      : Type(ValidatableType::KIND_BUILT_IN,
+             "java.util", "Map",
+             {"binder/Map.h", "binder/Value.h"},
+             "::std::unique_ptr<::android::binder::Map>",
+             "readNullableMap", "writeNullableMap") {}
+  virtual ~NullableMap() = default;
+  bool CanBeOutParameter() const override { return true; }
+};
+
+
+class MapType : public Type {
+ public:
+  MapType()
+      : Type(ValidatableType::KIND_BUILT_IN,
+             "java.util", "Map",
+             {"binder/Map.h","binder/Value.h"},
+             "::android::binder::Map",
+             "readMap", "writeMap",
+             kNoArrayType,
+             new NullableMap() ) {}
+  virtual ~MapType() = default;
+  bool CanBeOutParameter() const override { return true; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MapType);
+};  // class MapType
+
 class NullableStringListType : public Type {
  public:
   NullableStringListType()
@@ -456,6 +486,8 @@ void TypeNamespace::Init() {
       "readStrongBinder", "writeStrongBinder",
       kNoArrayType, nullable_ibinder);
   Add(ibinder_type_);
+
+  Add(new MapType());
 
   Add(new BinderListType());
   Add(new StringListType());

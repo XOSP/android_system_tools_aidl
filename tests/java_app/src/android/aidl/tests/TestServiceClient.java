@@ -38,6 +38,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 // Generated
 import android.aidl.tests.INamedCallback;
@@ -150,6 +152,17 @@ public class TestServiceClient extends Activity {
                 double query = 1.0/3.0;
                 double response = service.RepeatDouble(query);
                 if (query != response) {
+                    mLog.logAndThrow("Repeat with " + query +
+                                     " responded " + response);
+                }
+            }
+            {
+                Map<String, Object> query = new HashMap<String, Object>();
+                query.put("first_val", new Byte((byte)-128));
+                query.put("second_val", new Integer(1<<30));
+                query.put("third_val", "OHAI");
+                Object response = service.RepeatMap(query);
+                if (!query.equals(response)) {
                     mLog.logAndThrow("Repeat with " + query +
                                      " responded " + response);
                 }

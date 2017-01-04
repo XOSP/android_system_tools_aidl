@@ -47,6 +47,7 @@ interface ITestService {
   float RepeatFloat(float token);
   double RepeatDouble(double token);
   String RepeatString(String token);
+  Map RepeatMap(in Map token);
 
   SimpleParcelable RepeatSimpleParcelable(in SimpleParcelable input,
                                           out SimpleParcelable repeat);
